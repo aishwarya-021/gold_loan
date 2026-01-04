@@ -1,0 +1,6 @@
+Application_ID,Customer_ID,Requested_Amount,Tenure,Net_Weight,Carat,Status,Document_Failure_Reason,Created_At
+GL-B7EFE323,1be1d5b0-5200-4e71-a48e-91d75710c483,382000,19,890.0,18,UNDER_REVIEW,2026-01-04T06:15:35.173904,
+GL-19F27658,9a9782f5-9aaa-43fb-9193-6ba3fdead72d,41170000,22,20200.0,18,UNDER_REVIEW,"Identity mismatch detected. Name, DOB, or ID could not be confidently verified from the uploaded document.",2026-01-04T22:10:32.339322
+GL-10F9FB14,9a9782f5-9aaa-43fb-9193-6ba3fdead72d,168750,36,50.0,18,UNDER_REVIEW,"Identity mismatch detected. Name, DOB, or ID could not be confidently verified from the uploaded document.",2026-01-04T22:25:31.421013
+GL-77F5394C,9a9782f5-9aaa-43fb-9193-6ba3fdead72d,101250,36,30.0,18,SUBMITTED,"Identity mismatch detected. Name, DOB, or ID could not be confidently verified from the uploaded document.",2026-01-04T22:47:51.869467
+GL-0E8D241F,9a9782f5-9aaa-43fb-9193-6ba3fdead72d,133000,36,50.0,18,SUBMITTED,"Identity mismatch detected. Name, DOB, or ID could not be confidently verified from the uploaded document.",2026-01-04T23:00:34.560089
