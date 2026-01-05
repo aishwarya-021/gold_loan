@@ -1,40 +1,16 @@
 import streamlit as st
 import csv
-import os
 from datetime import date, datetime
 
 # =============================
-# FILE PATH SAFETY
+# FILE PATHS
 # =============================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
+APP_FILE = "data/applications.csv"
+AUDIT_FILE = "data/audit_logs.csv"
+VISIT_FILE = "data/branch_visits.csv"
+NOTIFY_FILE = "data/notifications.csv"
+OFFICER_FILE = "data/loan_officers.csv"
 
-APP_FILE = os.path.join(DATA_DIR, "applications.csv")
-AUDIT_FILE = os.path.join(DATA_DIR, "audit_logs.csv")
-VISIT_FILE = os.path.join(DATA_DIR, "branch_visits.csv")
-NOTIFY_FILE = os.path.join(DATA_DIR, "notifications.csv")
-OFFICER_FILE = os.path.join(DATA_DIR, "loan_officers.csv")
-
-# =============================
-# FILE INITIALIZATION
-# =============================
-def ensure_file(path, headers):
-    if not os.path.exists(path):
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow(headers)
-
-# Ensure all required files exist
-ensure_file(APP_FILE, [
-    "Application_ID","Customer_ID","Requested_Amount",
-    "Tenure","Net_Weight","Carat",
-    "Status","Document_Failure_Reason","Created_At"
-])
-
-ensure_file(OFFICER_FILE, ["Officer_ID","Name","EmpCode","PIN"])
-ensure_file(NOTIFY_FILE, ["Customer_ID","Application_ID","Sender","Message","Created_At"])
-ensure_file(AUDIT_FILE, ["Timestamp","Actor","Application_ID","Action","Remarks"])
-ensure_file(VISIT_FILE, ["Application_ID","Branch","Branch_Code","Visit_Date","Visit_Time","Status"])
 
 # =============================
 # HELPERS
@@ -60,6 +36,7 @@ def branches():
         "Bengaluru City Branch": "BR003"
     }
 
+
 # =============================
 # SAFE AGENTS (EXPLANATION ONLY)
 # =============================
@@ -83,6 +60,7 @@ def risk_evaluation_agent(app):
         return "MEDIUM", "Moderate exposure based on loan amount."
     return "LOW", "Low exposure based on conservative loan amount."
 
+
 # =============================
 # OFFICER FLOW
 # =============================
@@ -99,6 +77,7 @@ def render_officer_flow():
 
     if "evaluated_app" not in st.session_state:
         st.session_state.evaluated_app = None
+
 
     # -----------------------------
     # LOGIN
@@ -117,8 +96,8 @@ def render_officer_flow():
                         st.session_state.officer_name = r["Name"]
                         st.success(f"Welcome {r['Name']}")
                         st.rerun()
-            st.error("Invalid credentials")
         return
+
 
     # -----------------------------
     # DASHBOARD
@@ -126,37 +105,41 @@ def render_officer_flow():
     st.subheader("📋 Officer Dashboard")
     st.caption("AI assists with explanations only — decisions remain human.")
 
-    # -----------------------------
-    # LOAD APPLICATIONS
-    # -----------------------------
-    with open(APP_FILE, newline="", encoding="utf-8") as f:
-        all_apps = list(csv.DictReader(f))
 
-    pending_apps = [
-        r for r in all_apps
-        if r["Status"] in ["SUBMITTED", "UNDER_REVIEW"]
-    ]
-
+    # -----------------------------
+    # PENDING APPLICATIONS
+    # -----------------------------
     st.markdown("## 🗂 Pending Applications")
 
-    if not pending_apps:
-        st.info("No pending applications.")
-    else:
-        for i, app in enumerate(pending_apps):
-            with st.container():
-                st.markdown(f"""
-                **Application ID:** {app['Application_ID']}  
-                **Customer ID:** {app['Customer_ID']}  
-                **Amount:** ₹{app['Requested_Amount']}  
-                **Tenure:** {app['Tenure']} months  
-                **Gold:** {app['Net_Weight']}g | {app['Carat']}K  
-                **Status:** {app['Status']}
-                """)
+    pending_apps = []
+    with open(APP_FILE, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if r["Status"] in ["SUBMITTED", "UNDER_REVIEW"]:
+                pending_apps.append(r)
 
-                if st.button("Evaluate", key=f"eval_{i}"):
-                    st.session_state.evaluated_app = app
-                    st.rerun()
-            st.divider()
+
+    if not pending_apps and not st.session_state.evaluated_app:
+        st.info("No pending applications.")
+
+
+
+    for i, app in enumerate(pending_apps):
+        with st.container():
+            st.markdown(f"""
+            **Application ID:** {app['Application_ID']}  
+            **Customer ID:** {app['Customer_ID']}  
+            **Amount:** ₹{app['Requested_Amount']}  
+            **Tenure:** {app['Tenure']} months  
+            **Gold:** {app['Net_Weight']} g | {app['Carat']}K
+            """)
+
+            if st.button("Evaluate", key=f"eval_{i}"):
+                st.session_state.evaluated_app = app
+                update_application_status(app["Application_ID"], "UNDER_REVIEW")
+                st.rerun()
+
+        st.divider()
+
 
     # -----------------------------
     # LOAD SELECTED APPLICATION
@@ -166,78 +149,146 @@ def render_officer_flow():
 
     app = st.session_state.evaluated_app
 
+    st.info(f"🕒 Reviewing Application: {app['Application_ID']} (Status: {app['Status']})")
+
+
     # -----------------------------
-    # AGENT ANALYSIS
+    # CUSTOMER MASTER DETAILS
+    # -----------------------------
+    customer_data = None
+
+    with open("data/customers.csv", newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if r["Customer_ID"] == app["Customer_ID"]:
+                customer_data = r
+                break
+    if not customer_data:
+        st.error("Customer master data not found. Escalate to operations.")
+        return
+
+    st.markdown("## 🧾 Identity Verification (Officer Review)")
+
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### 👤 Customer Provided")
+        st.write("**Name:**", customer_data["Full_Name"])
+        st.write("**DOB:**", customer_data["DOB"])
+        st.write("**Aadhaar:**", "XXXX XXXX " + customer_data["Aadhaar"][-4:])
+
+    with col2:
+        st.markdown("### 📄 Document Extracted (AI)")
+        st.write("**Name:**", app.get("Extracted_Name", "Not detected"))
+        st.write("**DOB:**", app.get("Extracted_DOB", "Not detected"))
+        st.write(
+            "**Aadhaar:**",
+            "XXXX XXXX " + app.get("Extracted_ID_Last4", "XXXX")
+        )
+
+    # -----------------------------
+    # SMART AGENT ANALYSIS (RULE-BASED)
     # -----------------------------
     st.markdown("## 🧠 Agent Analysis")
 
-    missing = document_validation_agent(app)
-    policy_score, policy_msg = policy_compliance_agent(app)
-    risk, risk_msg = risk_evaluation_agent(app)
+    ex_name = app.get("Extracted_Name")
+    ex_dob = app.get("Extracted_DOB")
+    ex_id = app.get("Extracted_ID_Last4")
 
-    if not missing:
-        st.success("✅ Required fields present")
+    cust_name = customer_data["Full_Name"]
+    cust_dob = customer_data["DOB"]
+    cust_id_last4 = customer_data["Aadhaar"][-4:]
+
+    # ---------- REQUIRED FIELDS CHECK
+    if ex_name and ex_dob and ex_id:
+        st.success("✅ Required identity fields detected from document")
+        required_ok = True
     else:
-        st.error(f"❌ Missing fields: {', '.join(missing)}")
+        st.error("❌ Required identity fields missing in document")
+        required_ok = False
 
-    st.info(f"📘 Policy Score: {policy_score}")
-    st.caption(policy_msg)
+    # ---------- MATCH CHECKS
+    name_match = ex_name and ex_name.lower() in cust_name.lower()
+    dob_match = ex_dob and ex_dob in cust_dob
+    id_match = ex_id and ex_id == cust_id_last4
 
-    st.warning(f"⚠️ Risk Level: {risk}")
-    st.caption(risk_msg)
+    # ---------- RISK LOGIC
+    if name_match and dob_match and id_match:
+        risk = "LOW"
+        risk_msg = "All identity fields match customer records."
+    elif name_match and id_match:
+        risk = "MEDIUM"
+        risk_msg = "Name and ID match, but DOB mismatch or missing."
+    else:
+        risk = "HIGH"
+        risk_msg = "Identity mismatch or insufficient document verification."
+
+    # ---------- DISPLAY RESULTS
+    st.write("🔍 Name Match:", "✅" if name_match else "❌")
+    st.write("🔍 DOB Match:", "✅" if dob_match else "❌")
+    st.write("🔍 ID Match:", "✅" if id_match else "❌")
+
+    if risk == "LOW":
+        st.success(f"🟢 Risk Level: LOW — {risk_msg}")
+    elif risk == "MEDIUM":
+        st.warning(f"🟡 Risk Level: MEDIUM — {risk_msg}")
+    else:
+        st.error(f"🔴 Risk Level: HIGH — {risk_msg}")
+
+
+        # ---------------- COMPARISON ----------------
+    st.markdown("## 📊 Application vs Policy Comparison")
+    st.table([
+        {"Parameter": "Requested Amount", "Application": app["Requested_Amount"], "Policy": "Within LTV"},
+        {"Parameter": "Gold Weight", "Application": app["Net_Weight"], "Policy": "Verified"},
+        {"Parameter": "Gold Purity", "Application": app["Carat"], "Policy": "18K–24K"},
+        {"Parameter": "Tenure", "Application": app["Tenure"], "Policy": "Allowed"},
+        {"Parameter": "Risk", "Application": risk, "Policy": "Escalate if HIGH"}
+    ])
+
+
+
 
     # -----------------------------
     # OFFICER DECISION
     # -----------------------------
-    st.markdown("## 🧑‍⚖️ Officer Decision")
+    st.markdown("## 🧑‍⚖️ Officer Verification Decision")
 
-    decision = st.radio(
-        "Decision",
-        ["Proceed to Branch Visit", "Reject Application"]
+    verification = st.radio(
+    "Officer Decision",
+    ["Approve for Branch Visit", "Reject Application"]
     )
 
-    remarks = st.text_area(
-        "Remarks (visible to customer)",
-        placeholder="Mandatory if rejecting the application"
-    )
+    rejection_reason = None
+    remarks = ""
 
-    # -----------------------------
-    # REJECT APPLICATION
-    # -----------------------------
-    if decision == "Reject Application" and st.button("Reject Application"):
+    if verification == "Reject Application":
 
-        if not remarks.strip():
-            st.warning("Please provide rejection reason.")
+        rejection_reason = st.selectbox(
+            "Select rejection reason",
+            [
+                "Identity mismatch (Name / DOB / Aadhaar)",
+                "Document unreadable or blurred",
+                "Invalid or expired document",
+                "Suspicious / tampered document",
+                "Gold details mismatch with application",
+                "Other compliance or risk concern"
+            ]
+        )
+
+        remarks = st.text_area(
+            "Additional remarks (optional)",
+            placeholder="Any extra explanation for customer or audit"
+        )
+
+
+    # CASE- 1   [VERIFIED]
+
+    if verification == "Approve for Branch Visit":
+
+        if risk == "HIGH":
+            st.error("High-risk case. Manual escalation required.")
             return
-
-        update_application_status(app["Application_ID"], "REJECTED")
-
-        with open(NOTIFY_FILE, "a", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow([
-                app["Customer_ID"],
-                app["Application_ID"],
-                "LOAN_OFFICER",
-                f"Loan application rejected. Reason: {remarks}",
-                datetime.now().isoformat()
-            ])
-
-        with open(AUDIT_FILE, "a", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow([
-                datetime.now().isoformat(),
-                st.session_state.officer_name,
-                app["Application_ID"],
-                "REJECTED",
-                remarks
-            ])
-
-        st.error("❌ Application rejected and customer notified")
-        st.session_state.evaluated_app = None
-        st.rerun()
-
-    # -----------------------------
-    # PROCEED TO BRANCH VISIT
-    # -----------------------------
-    if decision == "Proceed to Branch Visit" and risk != "HIGH":
 
         st.markdown("### 🏦 Schedule Branch Visit")
 
@@ -265,7 +316,7 @@ def render_officer_flow():
                     app["Customer_ID"],
                     app["Application_ID"],
                     "SYSTEM",
-                    f"Please visit {branch} on {visit_date} at {visit_time} for gold verification.",
+                    f"Branch visit scheduled at {branch} on {visit_date} at {visit_time}.",
                     datetime.now().isoformat()
                 ])
 
@@ -274,10 +325,47 @@ def render_officer_flow():
                     datetime.now().isoformat(),
                     st.session_state.officer_name,
                     app["Application_ID"],
-                    "VISIT_SCHEDULED",
-                    f"Branch={branch}, Date={visit_date}, Time={visit_time}, Risk={risk}"
+                    "IDENTITY_MATCH_CONFIRMED",
+                    "Proceed to branch visit"
                 ])
 
-            st.success("✅ Branch visit scheduled & customer notified")
+            st.success("✅ Slot booked and customer notified")
             st.session_state.evaluated_app = None
             st.rerun()
+   
+    # CASE- 2   [REJECTION]
+
+    if verification == "Reject Application":
+
+        if st.button("Reject Application"):
+
+            final_reason = rejection_reason
+            if remarks.strip():
+                final_reason += f" | Officer remarks: {remarks}"
+
+            update_application_status(app["Application_ID"], "REJECTED")
+
+            # ---- Notify Customer
+            with open(NOTIFY_FILE, "a", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow([
+                    app["Customer_ID"],
+                    app["Application_ID"],
+                    "LOAN_OFFICER",
+                    f"Loan application rejected. Reason: {final_reason}",
+                    datetime.now().isoformat()
+                ])
+
+            # ---- Audit Log (internal)
+            with open(AUDIT_FILE, "a", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow([
+                    datetime.now().isoformat(),
+                    st.session_state.officer_name,
+                    app["Application_ID"],
+                    "APPLICATION_REJECTED",
+                    final_reason
+                ])
+
+            st.error("❌ Application rejected and customer notified")
+            st.session_state.evaluated_app = None
+            st.rerun()
+

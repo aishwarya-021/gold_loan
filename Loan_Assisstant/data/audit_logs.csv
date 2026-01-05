@@ -12,3 +12,11 @@
 2026-01-04T16:10:30.075512,Anita Sharma,GL-B7EFE323,SYSTEM_EVALUATION, |     Application ID: GL-B7EFE323 |     Officer: Anita Sharma |     Document Check: OK |     Policy Score: 0.82 |     Risk Level: MEDIUM |  |     NOTE: |     - This system does NOT approve loans. |     - Physical gold verification is mandatory. |     
 2026-01-04T16:29:21.255456,Anita Sharma,GL-B7EFE323,SYSTEM_EVALUATION, |     Application ID: GL-B7EFE323 |     Officer: Anita Sharma |     Document Check: OK |     Policy Score: 0.82 |     Risk Level: MEDIUM |  |     NOTE: |     - This system does NOT approve loans. |     - Physical gold verification is mandatory. |     
 2026-01-04T16:29:34.016394,Anita Sharma,GL-B7EFE323,SYSTEM_EVALUATION, |     Application ID: GL-B7EFE323 |     Officer: Anita Sharma |     Document Check: OK |     Policy Score: 0.82 |     Risk Level: MEDIUM |  |     NOTE: |     - This system does NOT approve loans. |     - Physical gold verification is mandatory. |     
+2026-01-04T23:33:14.228691,Anita Sharma,GL-10F9FB14,VISIT_SCHEDULED,"Branch=Bengaluru City Branch, Date=2026-01-04, Time=23:01:00, Risk=LOW"
+2026-01-04T23:34:01.043515,Anita Sharma,GL-B7EFE323,REJECTED,Moderate explosure based on loan amount
+2026-01-04T23:34:38.671051,Anita Sharma,GL-19F27658,REJECTED,Requested amount exceeds retail gold loan limits.
+2026-01-04T23:34:50.548587,Anita Sharma,GL-77F5394C,VISIT_SCHEDULED,"Branch=Mumbai Main Branch, Date=2026-01-04, Time=23:34:00, Risk=LOW"
+2026-01-04T23:34:57.413547,Anita Sharma,GL-0E8D241F,VISIT_SCHEDULED,"Branch=Mumbai Main Branch, Date=2026-01-04, Time=23:34:00, Risk=LOW"
+2026-01-04T23:42:51.495969,Anita Sharma,GL-D6990EC0,VISIT_SCHEDULED,"Branch=Mumbai Main Branch, Date=2026-01-04, Time=23:41:00, Risk=LOW"
+2026-01-05T11:54:30.807745,Anita Sharma,GL-87B5ED92,REJECTED,Document Not Validated
+2026-01-05T21:18:13.770418,Anita Sharma,GL-91C4797D,APPLICATION_REJECTED,Identity mismatch (Name / DOB / Aadhaar) | Officer remarks: Please upload valid documents.

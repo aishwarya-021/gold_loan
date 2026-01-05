@@ -1,1 +1,9 @@
 Customer_ID,Application_ID,Sender,Message,Created_At
+9a9782f5-9aaa-43fb-9193-6ba3fdead72d,GL-10F9FB14,SYSTEM,Please visit Bengaluru City Branch on 2026-01-04 at 23:01:00 for gold verification.,2026-01-04T23:33:14.187938
+1be1d5b0-5200-4e71-a48e-91d75710c483,GL-B7EFE323,LOAN_OFFICER,Loan application rejected. Reason: Moderate explosure based on loan amount,2026-01-04T23:34:01.031599
+9a9782f5-9aaa-43fb-9193-6ba3fdead72d,GL-19F27658,LOAN_OFFICER,Loan application rejected. Reason: Requested amount exceeds retail gold loan limits.,2026-01-04T23:34:38.657643
+9a9782f5-9aaa-43fb-9193-6ba3fdead72d,GL-77F5394C,SYSTEM,Please visit Mumbai Main Branch on 2026-01-04 at 23:34:00 for gold verification.,2026-01-04T23:34:50.533144
+9a9782f5-9aaa-43fb-9193-6ba3fdead72d,GL-0E8D241F,SYSTEM,Please visit Mumbai Main Branch on 2026-01-04 at 23:34:00 for gold verification.,2026-01-04T23:34:57.398350
+9a9782f5-9aaa-43fb-9193-6ba3fdead72d,GL-D6990EC0,SYSTEM,Please visit Mumbai Main Branch on 2026-01-04 at 23:41:00 for gold verification.,2026-01-04T23:42:51.478653
+9a9782f5-9aaa-43fb-9193-6ba3fdead72d,GL-87B5ED92,LOAN_OFFICER,Loan application rejected. Reason: Document Not Validated,2026-01-05T11:54:30.792827
+9a9782f5-9aaa-43fb-9193-6ba3fdead72d,GL-91C4797D,LOAN_OFFICER,Loan application rejected. Reason: Identity mismatch (Name / DOB / Aadhaar) | Officer remarks: Please upload valid documents.,2026-01-05T21:18:13.754189

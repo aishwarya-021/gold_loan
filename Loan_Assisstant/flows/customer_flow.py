@@ -16,6 +16,7 @@ import uuid
 import os
 from datetime import date, datetime
 
+from core.vision_kyc import extract_identity_from_image
 from core.config import GOLD_RATE_PER_GRAM, MAX_LTV, PURITY_FACTOR
 from core.masking import mask_dob, mask_pan, mask_mobile
 from core.emi_agent import emi_calculation_agent
@@ -24,48 +25,12 @@ from core.doc_verification import (
     ner_entity_extraction,
     identity_consistency_check
 )
+
 from core.validation import *
 
 CUSTOMER_FILE = "data/customers.csv"
 
-
 def render_customer_flow():
-
-    # =============================
-    # SESSION STATE INITIALIZATION
-    # =============================
-    if "page" not in st.session_state:
-        st.session_state.page = "login"
-
-    if "logged_customer" not in st.session_state:
-        st.session_state.logged_customer = None
-
-    if "ornaments" not in st.session_state:
-        st.session_state.ornaments = []
-
-    if "application_status" not in st.session_state:
-        st.session_state.application_status = None
-
-    if "application_id" not in st.session_state:
-        st.session_state.application_id = None
-
-    if "loan_summary" not in st.session_state:
-        st.session_state.loan_summary = None
-
-    if "net_weight" not in st.session_state:
-        st.session_state.net_weight = None
-
-    if "carat" not in st.session_state:
-        st.session_state.carat = None
-
-    if "uploaded_document" not in st.session_state:
-        st.session_state.uploaded_document = None
-
-    if "verification_result" not in st.session_state:
-        st.session_state.verification_result = None
-
-    if "document_failure_reason" not in st.session_state:
-        st.session_state.document_failure_reason = None
 
     # ---------- LOGIN ----------
     if st.session_state.page == "login":
@@ -467,62 +432,29 @@ def render_customer_flow():
         st.caption("Upload Aadhaar / PAN / identity document")
 
         uploaded = st.file_uploader(
-            "Upload Identity Document",
-            type=["png", "jpg", "jpeg"]
-        )
+        "Upload identity document (Aadhaar / PAN / Bill)",
+        type=["png", "jpg", "jpeg"]
+    )
 
-        if not uploaded:
-            st.info("Please upload Aadhaar / PAN document to proceed.")
-            return
+        if uploaded:
+            file_bytes = uploaded.getvalue()
 
-        st.session_state.uploaded_document = uploaded
-        customer = st.session_state.logged_customer
+            extracted, error = extract_identity_from_image(file_bytes)
 
-        # --- REAL OCR
-        text = ocr_tool(uploaded)
+            if error:
+                st.error("❌ Document could not be processed. Manual verification required.")
+                st.session_state.verification_result = None
+            else:
+                # STORE SILENTLY (customer never sees this)
+                st.session_state.verification_result = extracted
 
-        if not text.strip():
-            st.error("Unable to read document. Please upload a clear image.")
-            return
+                # OPTIONAL: auto-fail if nothing extracted
+                if not extracted["name"] and not extracted["aadhaar_last4"]:
+                    st.session_state.document_failure_reason = (
+                        "Identity details could not be confidently extracted from document."
+                    )
 
-        # --- REAL NER
-        extracted = ner_entity_extraction(text)
-
-        # --- STRICT VALIDATION
-        verification = identity_consistency_check(extracted, customer)
-        st.session_state.verification_result = verification
-
-        # Store failure reason (if any) for officer review
-        if not verification.get("document_valid"):
-            st.session_state.document_failure_reason = (
-                "Identity mismatch detected. "
-                "Name/DOB/ID could not be fully verified from uploaded document."
-            )
-        else:
-            st.session_state.document_failure_reason = None
-
-
-        st.markdown("### 🔍 Extracted Information (AI-assisted)")
-        st.json(extracted)
-
-        # --- Store results ONLY for officer review
-        st.session_state.verification_result = verification
-
-        if not verification.get("document_valid"):
-            st.session_state.document_failure_reason = (
-                "Identity mismatch detected. "
-                "Name, DOB, or ID could not be confidently verified "
-                "from the uploaded document."
-            )
-        else:
-            st.session_state.document_failure_reason = None
-
-        # --- Customer-facing message ONLY
-        st.success(
-            "📄 Document uploaded successfully.\n\n"
-            "Your application will be reviewed by a loan officer. "
-            "You will be notified once verification is completed."
-        )
+                st.success("✅ Document uploaded successfully")
 
         if st.button("Next"):
             st.session_state.page = "gold_step5"
@@ -599,32 +531,37 @@ def render_customer_flow():
         # -----------------------------
         if st.button("Submit Application"):
 
-            # Generate Application Reference ID
             application_id = f"GL-{uuid.uuid4().hex[:8].upper()}"
+            customer = st.session_state.logged_customer
+            summary = st.session_state.loan_summary
 
-            st.session_state.application_id = application_id
-            st.session_state.application_status = "SUBMITTED"
+            extracted = st.session_state.get("verification_result", {}) or {}
+            failure_reason = st.session_state.get(
+                "document_failure_reason", ""
+            )
 
-            # Save application to CSV
             with open("data/applications.csv", "a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow([
-                application_id,
-                st.session_state.logged_customer["Customer_ID"],
-                st.session_state.loan_summary["loan_amount"],
-                st.session_state.loan_summary["tenure_months"],
-                st.session_state.net_weight,
-                st.session_state.carat,
-                "SUBMITTED",
-                st.session_state.get("document_failure_reason", ""),
-                datetime.now().isoformat()
-            ])
+                    application_id,
+                    customer["Customer_ID"],
+                    summary["loan_amount"],
+                    summary["tenure_months"],
+                    st.session_state.net_weight,
+                    st.session_state.carat,
+                    "SUBMITTED",
+                    failure_reason,
+                    extracted.get("name", ""),
+                    extracted.get("dob", ""),
+                    extracted.get("aadhaar_last4", ""),
+                    datetime.now().isoformat()
+                ])
 
 
+            st.session_state.application_id = application_id
+            st.session_state.application_status = "SUBMITTED"
             st.session_state.page = "gold_step6"
             st.rerun()
-
-
 
     # ---------- STEP 6 : CONFIRMATION ----------
     elif st.session_state.page == "gold_step6":

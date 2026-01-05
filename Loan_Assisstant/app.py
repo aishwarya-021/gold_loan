@@ -1,90 +1,126 @@
+"""
+APPLICATION FLOW (Customer):
+login
+→ home
+→ loan_list
+→ gold_loan
+→ gold_step1 (Personal Details)
+→ gold_step2 (Gold Details)
+→ gold_step3 (Loan & EMI)
+→ gold_step4 (Document Upload)
+→ gold_step5 (Summary & Submit)
+→ gold_step6 (Confirmation)
+"""
+from core.doc_verification import (
+    ocr_tool,
+    ner_entity_extraction,
+    identity_consistency_check
+)
+
+from flows.customer_flow import render_customer_flow
+from flows.officer_flow import render_officer_flow
+
 import streamlit as st
+import csv
 import os
-import sys
+import uuid
+import re
+from datetime import date
 
-# ==================================================
-# PAGE CONFIG (MUST BE FIRST)
-# ==================================================
-st.set_page_config(
-    page_title="Gold Loan Assistant",
-    layout="wide"
+from core.masking import mask_dob, mask_pan, mask_mobile
+from core.emi_agent import emi_calculation_agent
+
+
+from core.validation import (
+    valid_name,
+    valid_mobile,
+    valid_email,
+    valid_pan,
+    valid_aadhaar,
+    valid_pin
 )
 
-# ==================================================
-# PROJECT ROOT SAFETY
-# Ensures Streamlit runs from project root
-# ==================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(BASE_DIR)
+# =============================
+# SESSION STATE
+# =============================
+if "page" not in st.session_state:
+    st.session_state.page = "login"
 
-# ==================================================
-# SAFE IMPORTS (NO BLANK SCREENS)
-# ==================================================
-customer_error = None
-officer_error = None
+if "logged_customer" not in st.session_state:
+    st.session_state.logged_customer = None
 
-try:
-    from flows.customer_flow import render_customer_flow
-except Exception as e:
-    render_customer_flow = None
-    customer_error = e
+if "ornaments" not in st.session_state:
+    st.session_state.ornaments = []
 
-try:
-    from flows.officer_flow import render_officer_flow
-except Exception as e:
-    render_officer_flow = None
-    officer_error = e
+if "loan_summary" not in st.session_state:
+    st.session_state.loan_summary = None
 
-# ==================================================
-# APP HEADER
-# ==================================================
-st.title("🏦 Gold Loan Assistant")
-st.caption("Customer & Loan Officer Workflow")
+if "application_id" not in st.session_state:
+    st.session_state.application_id = None
 
-# ==================================================
-# SIDEBAR NAVIGATION
-# (This is NOT st.session_state.page)
-# ==================================================
-st.sidebar.title("Navigation")
+if "application_status" not in st.session_state:
+    st.session_state.application_status = None
 
-portal = st.sidebar.radio(
-    "Select Portal",
-    ["Customer", "Loan Officer"]
-)
+if "notifications" not in st.session_state:
+    st.session_state.notifications = []
 
-# ==================================================
-# ROUTING
-# ==================================================
-if portal == "Customer":
+if "uploaded_document" not in st.session_state:
+    st.session_state.uploaded_document = None
 
-    st.subheader("👤 Customer Portal")
+if "verification_result" not in st.session_state:
+    st.session_state.verification_result = None
 
-    if render_customer_flow is None:
-        st.error("❌ Customer module failed to load")
-        st.exception(customer_error)
-    else:
-        try:
-            render_customer_flow()
-        except Exception as e:
-            st.error("❌ Customer flow crashed during execution")
-            st.exception(e)
 
-else:
+# =============================
+# FILE PATHS
+# =============================
+CUSTOMER_FILE = "data/customers.csv"
+OFFICER_FILE = "data/loan_officers.csv"
 
-    st.subheader("🧑‍💼 Loan Officer Portal")
 
-    if render_officer_flow is None:
-        st.error("❌ Officer module failed to load")
-        st.exception(officer_error)
-    else:
-        try:
-            render_officer_flow()
-        except Exception as e:
-            st.error("❌ Officer flow crashed during execution")
-            st.exception(e)
+# =============================
+# INITIALIZE FILES
+# =============================
+def init_files():
+    if not os.path.exists(CUSTOMER_FILE):
+        with open(CUSTOMER_FILE, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "Customer_ID", "Full_Name", "DOB", "Gender",
+                "Mobile", "Email", "Address",
+                "PAN", "Aadhaar", "PIN"
+            ])
 
-# ==================================================
+    if not os.path.exists(OFFICER_FILE):
+        with open(OFFICER_FILE, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Officer_ID", "Name", "EmpCode", "PIN"])
+            writer.writerow(["OFF001", "Anita Sharma", "EMP1023", "9999"])
+
+init_files()
+
+# =============================
+# UI CONFIG
+# =============================
+st.set_page_config(page_title="Gold Loan System", layout="centered")
+st.title("🏦 Intelligent Loan Processing Assistant")
+st.caption("Academic Demo | Policy-Driven UI | No Auto-Approval")
+
+role = st.sidebar.selectbox("Select Role", ["Customer", "Loan Officer"])
+st.divider()
+
+if role == "Customer":
+    render_customer_flow()
+elif role == "Loan Officer":
+    render_officer_flow()
+
+
+# =============================
 # FOOTER
-# ==================================================
-st.sidebar.markdown("---")
-st.sidebar.caption("Gold Loan Assistant • Streamlit Application")
+# =============================
+st.divider()
+st.caption("⚠️ Academic demonstration only. No real banking data processed.")
+
+
+
+

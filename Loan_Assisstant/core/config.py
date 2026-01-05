@@ -2,6 +2,7 @@
 # GOLD LOAN CONFIGURATION
 # =============================
 
+
 GOLD_RATE_PER_GRAM = 6000
 MAX_LTV = 0.75
 
